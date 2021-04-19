@@ -43,11 +43,9 @@ def extract_twitter_data(search_words):
     
     return dataframe
 
-words = ['respiratory disease','immunology','oncology','Neuroscience']
-
-#for word in words:
-    #df = extract_twitter_data(word)
-    #df.to_pickle(word)
+word = 'immunology'
+df = extract_twitter_data(word)
+df.to_pickle(word)
 
 # Method 1: do they have the country just written out
 def process_location_names(dataframe):
@@ -129,17 +127,41 @@ def process_data(df):
     
     return locations_dataframe_country_codes,country_counts_list
 
-#immunology_processed,immunology_country_counts = process_data(df)
+processed,country_counts = process_data(df)
 
-immunology_country_counts = pickle.load(open('immunology_country_counts', 'rb'))
 
 # Load in world map
 world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
+
+# Normalise the data
+country_counts['count'] = country_counts['count']/(country_counts['count'].max())
 
 # Make new col with the data from the word
 world_count = np.zeros(world.size)
 
 for i in range(len(world_count)):
-  for j in range(immunology_country_counts.size):
-    if world['iso_a3'][i] == immunology_country_counts['country_code'][j]:
-      world_count[i] = immunology_country_counts['country_code'][j]
+  for j in range(country_counts.size):
+    if world['iso_a3'][i] == country_counts['country_code'][j]:
+      world_count[i] = country_counts['country_code'][j]
+      
+      
+# Load in world map
+world = geopandas.read_file(geopandas.datasets.get_path('naturalearth_lowres'))
+
+# Make new col with the data from the word
+world['count'] = np.zeros(world['iso_a3'].size)
+
+for i in range(country_counts['country_code'].size):
+  index = world['iso_a3'][world['iso_a3']==country_counts['country_code'][i]].index.values
+  world['count'][index] = np.log10(country_counts['count'][i])
+  
+# Plot map
+fig, ax = plt.subplots(figsize=(10,10))
+
+world.plot(column='count',
+  ax=ax,
+  cmap='Blues',
+  legend=True,
+  legend_kwds={'label': "log(Number of Twitter users)",
+  'orientation': "horizontal"})
+ax.axis('off')
